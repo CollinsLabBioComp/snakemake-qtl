@@ -53,11 +53,12 @@ cmd = '{} -N "{}" -V -cwd -l "{}"'.format(
 if threads > 1:
     cmd = '{} -pe make-dedicated {}'.format(cmd, threads)
 if output: 
+    output = output.replace(",", "__")
     cmd = '{} -o {}'.format(cmd, output)
 if error: 
+    error = error.replace(",", "__")
     cmd = '{} -e {}'.format(cmd, error)
 cmd = '{} {}'.format(cmd, jobscript)
-
 
 # run the command
 os.system(cmd)

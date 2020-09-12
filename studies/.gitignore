@@ -1,0 +1,8 @@
+*/*/logs
+*/*/\.s*
+*/*/data
+*/peer/*.tsv
+*/peer/*.tbi
+*/qtl/*.tsv
+*/qtl/*.tbi
+*/peer/peer_runs

@@ -82,7 +82,7 @@ rule qtltools__prep_vcf:
     shell:
         'for i in {input}; do '
             'out_i=`basename $i`; '
-            'in_i=`realpath $i`; '
+            'in_i=`readlink -f $i`; '
             'ln -s $in_i peer_runs/factor_{wildcards.k}/data/$out_i; '
         'done'
 
@@ -113,7 +113,7 @@ rule qtltools__prep_moltraits:
     output:
         'peer_runs/factor_{k}/data/moltraits.bed.gz'
     shell:
-        'ln -s `realpath {input}` {output}'
+        'ln -s `readlink -f {input}` {output}'
 
 
 rule qtltools__prep_analysis_config:
@@ -125,7 +125,7 @@ rule qtltools__prep_analysis_config:
     output:
         'peer_runs/factor_{k}/config_analysis.json'
     shell:
-        'ln -s `realpath {input}` {output}'
+        'ln -s `readlink -f {input}` {output}'
 
 
 rule qtltools__prep_cluster_config:
@@ -137,7 +137,7 @@ rule qtltools__prep_cluster_config:
     output:
         'peer_runs/factor_{k}/config_cluster.json'
     shell:
-        'ln -s `realpath {input}` {output}'
+        'ln -s `readlink -f {input}` {output}'
 
 
 rule qtltools__in_subdir_clean_logs:

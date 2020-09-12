@@ -14,24 +14,23 @@ optionList = list(
         )
     ), 
         
-    make_option(c('-c', '--column'), 
+    make_option(c('-i', '--id_column'), 
         type='character', 
-        help='Column to use for input values.'
+        help='Column to use for ids.'
     ), 
         
-    make_option(c('-oc', '--out_column'), 
+    make_option(c('-v', '--value_column'), 
         type='character',
-        default='',
-        help='Output column name. [default q_<column>]'
+        help='Column to use for values'
     )
 )
 
 parser = OptionParser(
-    usage='%prog -f file -c column -oc output_column_name', 
+    usage='%prog -f file -ic id_column -vc value_column', 
     option_list=optionList,
-    description=paste0(
-        'Performs Storey\'s FDR procedure on a dataframe. ',
-        'Output returned to stdout.'
+    description = paste0(
+        'Finds the minimum line for each id based on value. ',
+        'For ties returns the first instance.'
     )
 )
 
@@ -52,7 +51,7 @@ arguments = parse_args(parser, positional_arguments=TRUE)
 
 
 ######################## Required Packages #####################################
-suppressPackageStartupMessages(library(qvalue))
+suppressPackageStartupMessages(library(plyr))
 ################################################################################
 
 
@@ -60,27 +59,33 @@ suppressPackageStartupMessages(library(qvalue))
 # read in the input data
 f=arguments$options$file
 if (f == 'stdin') {
-    dat = read.table(file=file('stdin'), sep="\t", header=TRUE, 
+    dat = read.table(file=file('stdin'), sep='\t', header=TRUE, 
         stringsAsFactors=FALSE)
 } else {
-    #dat = read.table(file=f, header=T, sep='\t', stringsAsFactors=FALSE)
     suppressMessages(library(data.table))
+    #dat = read.table(file=f, header=T, sep='\t')
     dat = data.frame(fread(paste("gunzip -c", f), sep="\t", header=TRUE, 
         stringsAsFactors=FALSE, showProgress=FALSE))
 }
 
 # set up in and out columns
-in_col = arguments$options$column
-if (arguments$options$out_column == '') {
-    out_col = paste('q', in_col, sep='__')
-} else {
-    out_col = arguments$options$out_column
-}
+id_col = arguments$options$id_column
+val_col = arguments$options$value_column
 
-dat[[out_col]] = qvalue(dat[[in_col]])$qvalues
+# make temp variables
+dat[["val_col"]] = dat[[val_col]] 
+
+# get the min value across the id col
+dat_out = plyr::ddply(dat, c(id_col), function (df) {
+    d=subset(df, val_col == min(df$val_col, na.rm=TRUE));
+    return(d[1,]) # return first row (in case of ties)
+})
+
+# delete temp variable
+dat_out[["val_col"]] = NULL 
 
 # output to a file
-write.table(dat,
+write.table(dat_out,
     file=stdout(),
     row.names = FALSE,
     col.names = TRUE,
