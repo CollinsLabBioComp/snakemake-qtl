@@ -42,6 +42,9 @@ def subset_phenotypes(pheno_file, sample_list):
     cols = phenos.columns[0:6].tolist()
     cols.extend(sample_list)
     phenos = phenos[cols]
+
+    # Also remove any 0-sum rows
+    phenos = phenos.loc[(phenos[phenos.columns[6:]].sum(1) != 0), ]
     return(phenos)
 
 
@@ -134,17 +137,14 @@ def main():
 
     # Subset pheno
     pheno_df = subset_phenotypes(options.phenotypes, retain_smpls)
-    compression_opts = 'gzip'
-    if LooseVersion(pd.__version__) > '1.0.0':
-        compression_opts = dict(method='gzip', compresslevel=9)
-
     pheno_df.to_csv(
-        '{}/moltraits.bed.gz'.format(options.output_dir),
+        '{}/moltraits.bed'.format(options.output_dir),
         sep='\t',
-        compression=compression_opts,
         index=False,
         header=True
     )
+    # Need to bgzip it
+    os.system("bgzip {}/moltraits.bed".format(options.output_dir))
 
 
 if __name__ == '__main__':
