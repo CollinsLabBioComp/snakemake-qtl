@@ -33,7 +33,11 @@ def subset_covariates(cov_file, sample_list):
     return(covs)
 
 
-def subset_phenotypes(pheno_file, sample_list):
+def subset_phenotypes(
+    pheno_file,
+    sample_list,
+    min_expr
+):
     phenos = pd.read_csv(
         pheno_file,
         sep="\t",
@@ -43,8 +47,8 @@ def subset_phenotypes(pheno_file, sample_list):
     cols.extend(sample_list)
     phenos = phenos[cols]
 
-    # Also remove any 0-sum rows
-    phenos = phenos.loc[(phenos[phenos.columns[6:]].sum(1) != 0), ]
+    # Also remove any rows that have an average less than min_expr
+    phenos = phenos.loc[(phenos[phenos.columns[6:]].mean(1) > min_expr), ]
     return(phenos)
 
 
@@ -86,6 +90,15 @@ def main():
         dest='samples',
         required=True,
         help='Samples to retain.'
+    )
+
+    parser.add_argument(
+        '-min_expr', '--minimum_expression',
+        action='store',
+        dest='min_expr',
+        default=0,
+        type=int,
+        help='Minimum mean expession to retain in phenotype.'
     )
 
     parser.add_argument(
@@ -136,7 +149,11 @@ def main():
     )
 
     # Subset pheno
-    pheno_df = subset_phenotypes(options.phenotypes, retain_smpls)
+    pheno_df = subset_phenotypes(
+        options.phenotypes,
+        retain_smpls,
+        options.min_expr
+    )
     pheno_df.to_csv(
         '{}/moltraits.bed'.format(options.output_dir),
         sep='\t',
