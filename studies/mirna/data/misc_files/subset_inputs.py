@@ -9,6 +9,7 @@ import os
 import argparse
 from distutils.version import LooseVersion
 import pandas as pd
+import numpy as np
 
 
 def subset_vcf(bcf_tool, vsf_file, sample_list, output_dir):
@@ -36,7 +37,9 @@ def subset_covariates(cov_file, sample_list):
 def subset_phenotypes(
     pheno_file,
     sample_list,
-    min_expr
+    min_avg_expr,
+    min_expr_cell,
+    pct_cells
 ):
     phenos = pd.read_csv(
         pheno_file,
@@ -47,8 +50,14 @@ def subset_phenotypes(
     cols.extend(sample_list)
     phenos = phenos[cols]
 
-    # Also remove any rows that have an average less than min_expr
-    phenos = phenos.loc[(phenos[phenos.columns[6:]].mean(1) > min_expr), ]
+    # Also remove any rows that have an average less than min_avg_expr
+    phenos = phenos.loc[(phenos[phenos.columns[6:]].mean(1) >= min_avg_expr), ]
+
+    # Also remove any rows that express a min of `min_expr_cell` in atleast
+    # `pct_cells` of cells
+    genes_pass_filter = (phenos[phenos.columns[6:]] >= min_expr_cell).sum(1)
+    n_smpls = np.ceil(len(phenos[phenos.columns[6:]].columns) * pct_cells)
+    phenos = phenos.loc[genes_pass_filter >= n_smpls, ]
     return(phenos)
 
 
@@ -93,12 +102,30 @@ def main():
     )
 
     parser.add_argument(
-        '-min_expr', '--minimum_expression',
+        '-min_avg_expr', '--minimum_avg_expression',
         action='store',
-        dest='min_expr',
-        default=0,
+        dest='min_avg_expr',
+        default=1,
         type=int,
         help='Minimum mean expession to retain in phenotype.'
+    )
+
+    parser.add_argument(
+        '-min_expr_cell', '--minimum_expression_per_cell',
+        action='store',
+        dest='min_expr_cell',
+        default=0,
+        type=float,
+        help='Minimum expession across a specific % of cells in phenotype.'
+    )
+
+    parser.add_argument(
+        '-pct_smpls', '--percent_samples',
+        action='store',
+        dest='pct_smpls',
+        default=0.25,
+        type=float,
+        help='Percent of samples expressing min_expr_cell'
     )
 
     parser.add_argument(
@@ -152,7 +179,9 @@ def main():
     pheno_df = subset_phenotypes(
         options.phenotypes,
         retain_smpls,
-        options.min_expr
+        options.min_avg_expr,
+        options.min_expr_cell,
+        options.pct_smpls
     )
     pheno_df.to_csv(
         '{}/moltraits.bed'.format(options.output_dir),
